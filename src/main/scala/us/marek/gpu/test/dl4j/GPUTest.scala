@@ -6,6 +6,7 @@ import org.apache.spark.{SparkContext, SparkConf}
 import jcuda._
 import jcuda.jcublas._
 import JCublas.{ cublasAlloc, cublasCsscal, cublasGetVector, cublasSetVector }
+import JCuda.cudaFree
 
 import scala.util.Random
 
@@ -23,13 +24,14 @@ object GPUTest extends App {
   val rdd = sc.parallelize(randInput)
 
   def multOnGpu(vector: Array[Float], scalar: Float): Array[Float] = {
-    val srcPtr = new Pointer()
+    val ptr = new Pointer()
     val numEl = vector.length
-    cublasAlloc(numEl, Sizeof.FLOAT, srcPtr)
-    cublasSetVector(numEl, Sizeof.FLOAT, Pointer.to(vector), 1, srcPtr, 1)
-    cublasCsscal(numEl, scalar, srcPtr, 1)
+    cublasAlloc(numEl, Sizeof.FLOAT, ptr)
+    cublasSetVector(numEl, Sizeof.FLOAT, Pointer.to(vector), 1, ptr, 1)
+    cublasCsscal(numEl, scalar, ptr, 1)
     val output = Array.fill(numEl)(0.0F)
-    cublasGetVector(numEl, Sizeof.FLOAT, srcPtr, 1, Pointer.to(output), 1)
+    cublasGetVector(numEl, Sizeof.FLOAT, ptr, 1, Pointer.to(output), 1)
+    cudaFree(ptr)
     output
   }
 
